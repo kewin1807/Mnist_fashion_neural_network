@@ -1,16 +1,35 @@
 import numpy as np 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+def sigmoid(Z):
+    A = 1/(1+np.exp(-Z))
+    cache = Z
+    return A, cache
 
-def dSigmoid(x) : #đạo hàm của sigmoid 
-   return sigmoid(x) * (1 - sigmoid(x))
+def dSigmoid(dA, cache):
+    Z = cache
+    s = 1/(1+np.exp(-Z))
+    dZ = dA * s * (1-s)
+    assert (dZ.shape == Z.shape)
+    return dZ
 
-def ReLU(x) : 
-    return x * (x > 0)
-
-def softmax(x):       # activation when output là multiclass 
-    e = numpy.exp(x - numpy.max(x))  # ngăn không bị tràn số 
+def relu(Z):
+    A = np.maximum(0,Z)
+    assert(A.shape == Z.shape)
+    cache = Z
+    return A, cache
+def dReLU(dA, cache): # đạo hàm của hàm ReLU
+    Z = cache
+    dZ = np.array(dA, copy=True) # just converting dz to a correct object.
+    # When z <= 0, you should set dz to 0 as well. 
+    dZ[Z <= 0] = 0
+    assert (dZ.shape == Z.shape)
+    return dZ
+def softmax(Z):       # activation when output là multiclass 
+    e = numpy.exp(Z - numpy.max(Z))  # ngăn không bị tràn số 
+    A = Z
     if e.ndim == 1:
-        return e / numpy.sum(e, axis=0)
+        A =  e / numpy.sum(e, axis=0)
     else:  
-        return e / numpy.array([numpy.sum(e, axis=1)]).T  # ndim = 2
+        A = e / numpy.array([numpy.sum(e, axis=1)]).T  # ndim = 2
+    cache = Z 
+    return A, cache
+def dSoftmax(dA, cache):
