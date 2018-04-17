@@ -1,5 +1,5 @@
 import mnist_reader
-from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
+from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax, dSoftmax
 import numpy as np
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
@@ -38,7 +38,7 @@ def L_model_linear_forward(X, parameters):
     L = len(parameters)
     caches = []
     for i in range(1, L):
-        A_prev = A
+        A_prev = A 
         A, cache = forward_propagation(A_prev, parameters['W' + str(i)], parameters['b' + str(i)], "ReLU")
         caches.append(cache)
     AL, cache = forward_propagation(A_prev, parameters['W' + str(L)], parameters['b' + str(L)], "softmax" )
@@ -68,12 +68,29 @@ def backward_propagation(dA, cache, activation):
         dZ = dSigmoid(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
     if activation == "softmax":
-       
+        dZ = dSoftmax(dA, linear_cache)
+        dA_prev, dW, db = linear_backward(dZ, linear_cache)
     return dA_prev, dW, db
 
 
 def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc 
-    
+    L =len(caches)
+    grads = {}
+    dAL = AL - y
+    current_cache = caches[-1]
+    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  linear_activation_backward(dAL, current_cache, activation = "softmax")
+    for l in reversed(range(L-1)):
+        # lth layer: (RELU -> LINEAR) gradients.
+        # Inputs: "grads["dA" + str(l + 2)], caches". Outputs: "grads["dA" + str(l + 1)] , grads["dW" + str(l + 1)] , grads["db" + str(l + 1)] 
+        ### START CODE HERE ### (approx. 5 lines)
+        current_cache = caches[l]
+        dA_prev_temp, dW_temp, db_temp =  linear_activation_backward(grads["dA" + str(l + 2)], current_cache, activation = "ReLU")
+        grads["dA" + str(l + 1)] = dA_prev_temp
+        grads["dW" + str(l + 1)] = dW_temp
+        grads["db" + str(l + 1)] = db_temp
+        ### END CODE HERE ###
+
+    return grads
 
 
 
