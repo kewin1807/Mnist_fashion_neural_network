@@ -33,3 +33,8 @@ def softmax(Z):       # activation when output là multiclass
     cache = Z 
     return A, cache
 def dSoftmax(dA, cache):
+    Z  = cache
+
+     A = softmax((W.T.dot(X)))
+    E = A - Y
+    return X.dot(E.T)
