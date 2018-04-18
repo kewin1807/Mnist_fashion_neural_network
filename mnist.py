@@ -24,10 +24,10 @@ def forward_propagation(A_prev, W,b, activation):
     if activation == "sigmoid":
         Z, linear_cache = linear_forward_propagation(A_prev, W, b)
         A, activation_cache = sigmoid(Z)
-    if activation == "ReLU":
+    elif activation == "ReLU":
          Z, linear_cache = linear_forward_propagation(A_prev, W, b)
          A, activation_cache = ReLU(Z)
-    if activation == "softmax":
+    elif activation == "softmax":
         Z, linear_cache = linear_forward_propagation(A_prev, W, b)
         A, activation_cache = softmax(Z)
     cache = (linear_cache, activation_cache)
@@ -35,13 +35,13 @@ def forward_propagation(A_prev, W,b, activation):
 
 def L_model_linear_forward(X, parameters):
     A = X
-    L = len(parameters)
+    L = len(parameters) / 2
     caches = []
     for i in range(1, L):
         A_prev = A 
         A, cache = forward_propagation(A_prev, parameters['W' + str(i)], parameters['b' + str(i)], "ReLU")
         caches.append(cache)
-    AL, cache = forward_propagation(A_prev, parameters['W' + str(L)], parameters['b' + str(L)], "softmax" )
+    AL, cache = forward_propagation(A, parameters['W' + str(L)], parameters['b' + str(L)], "softmax" )
     caches.append(cache)
     return AL, caches
 
@@ -60,7 +60,7 @@ def linear_backward(dZ, cache):
 
 
 def backward_propagation(dA, cache, activation):
-    linear_cache , activation_cache = cache,
+    linear_cache , activation_cache = cache
     if activation == "ReLU" :
         dZ = dReLU(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
@@ -68,7 +68,7 @@ def backward_propagation(dA, cache, activation):
         dZ = dSigmoid(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
     if activation == "softmax":
-        dZ = dSoftmax(dA, linear_cache)
+        dZ = dA
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
     return dA_prev, dW, db
 
@@ -76,31 +76,48 @@ def backward_propagation(dA, cache, activation):
 def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc 
     L =len(caches)
     grads = {}
-    dAL = AL - y
+    y = y.reshape((y.shape[0], 1))
+    dAL = np.subtract(AL,y)
     current_cache = caches[-1]
-    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  linear_activation_backward(dAL, current_cache, activation = "softmax")
+    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  backward_propagation(dAL, current_cache, activation = "softmax")
     for l in reversed(range(L-1)):
-        # lth layer: (RELU -> LINEAR) gradients.
-        # Inputs: "grads["dA" + str(l + 2)], caches". Outputs: "grads["dA" + str(l + 1)] , grads["dW" + str(l + 1)] , grads["db" + str(l + 1)] 
-        ### START CODE HERE ### (approx. 5 lines)
         current_cache = caches[l]
-        dA_prev_temp, dW_temp, db_temp =  linear_activation_backward(grads["dA" + str(l + 2)], current_cache, activation = "ReLU")
+        dA_prev_temp, dW_temp, db_temp =  backward_propagation(grads["dA" + str(l + 2)], current_cache, activation = "ReLU")
         grads["dA" + str(l + 1)] = dA_prev_temp
         grads["dW" + str(l + 1)] = dW_temp
         grads["db" + str(l + 1)] = db_temp
-        ### END CODE HERE ###
-
     return grads
+
+
+def update_parameters(parameters, grads, learning_rate):
+    L = len(parameters)
+    for i in range(L):
+        parameters["W" + str(i+1)] = parameters["W" + str(i+1)] - learning_rate * grads["dW" + str(i+1)]
+        parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
+    return parameters
 
 
 
 
     
 
-# def main() :
-#     parameters = initialize_parameters([5,4,1])
-#     print(parameters)
+def main() :
+    parameters = initialize_parameters([m,4,m ])
+    # print(parameters)
+    Z, cache1 = linear_forward_propagation(X_train, parameters["W1"], parameters["b1"])
+    # A = sigmoid(Z)
+    # print(A)
+    # print(forward_propagation(X_train, parameters["W1"], parameters["b1"], "sigmoid"))
 
-# if (__name__ == "__main__"):
-#     main()
+    AL, caches =  L_model_linear_forward(X_train, parameters)
+    #  print(AL.shape[0])
+    grads = L_model_backward_propagation(caches , AL, y_train)
+    print(grads)
+    print(AL)
+    # print (y_train)
+   
+    
+
+if (__name__ == "__main__"):
+    main()
    
