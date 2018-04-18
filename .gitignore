@@ -99,7 +99,7 @@ venv.bak/
 /site
 
 # mypy
-.mypy_cache/
-
+.mypy_cache
+#aaaaa
 
 # End of https://www.gitignore.io/api/python
