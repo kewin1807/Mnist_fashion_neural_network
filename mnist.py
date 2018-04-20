@@ -1,9 +1,11 @@
 import mnist_reader
-from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax, dSoftmax
+from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
 import numpy as np
+import scipy.sparse
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
-m = X_train.shape[0]
+X_train = np.transpose(X_train) 
+y_train = np.transpose(y_train)
 
 
 def initialize_parameters(layer_dims): 
@@ -17,6 +19,7 @@ def initialize_parameters(layer_dims):
 def linear_forward_propagation(A, W, b):
     Z = np.dot(W, A) + b
     cache = (A, W, b)
+   
     return Z, cache
 
 
@@ -24,10 +27,10 @@ def forward_propagation(A_prev, W,b, activation):
     if activation == "sigmoid":
         Z, linear_cache = linear_forward_propagation(A_prev, W, b)
         A, activation_cache = sigmoid(Z)
-    elif activation == "ReLU":
+    if activation == "ReLU":
          Z, linear_cache = linear_forward_propagation(A_prev, W, b)
          A, activation_cache = ReLU(Z)
-    elif activation == "softmax":
+    if activation == "softmax":
         Z, linear_cache = linear_forward_propagation(A_prev, W, b)
         A, activation_cache = softmax(Z)
     cache = (linear_cache, activation_cache)
@@ -41,14 +44,22 @@ def L_model_linear_forward(X, parameters):
         A_prev = A 
         A, cache = forward_propagation(A_prev, parameters['W' + str(i)], parameters['b' + str(i)], "ReLU")
         caches.append(cache)
-    AL, cache = forward_propagation(A, parameters['W' + str(L)], parameters['b' + str(L)], "softmax" )
+       
+    AL, cache = forward_propagation(A, parameters['W' + str(L)], parameters['b' + str(L)], "softmax")
     caches.append(cache)
+   
     return AL, caches
 
+def transform_one_hot(Y):
+    m = Y.shape[0]
+    OHX = scipy.sparse.csr_matrix((np.ones(m), (Y, np.array(range(m)))))
+    OHX = np.array(OHX.todense()).T
+    return np.transpose(OHX)
 
 def cost_function(AL, y) : 
-   cost = -np.sum(y * np.log(AL))
-   return cost 
+   m = X_train.shape[1]
+   cost = -(np.sum(y * np.log(AL)) ) / m
+   return cost
 
 def linear_backward(dZ, cache):
     A_prev, W, b = cache
@@ -76,7 +87,7 @@ def backward_propagation(dA, cache, activation):
 def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc 
     L =len(caches)
     grads = {}
-    y = y.reshape((y.shape[0], 1))
+    
     dAL = np.subtract(AL,y)
     current_cache = caches[-1]
     grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  backward_propagation(dAL, current_cache, activation = "softmax")
@@ -90,31 +101,46 @@ def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc
 
 
 def update_parameters(parameters, grads, learning_rate):
-    L = len(parameters)
+    L = len(parameters) / 2
     for i in range(L):
         parameters["W" + str(i+1)] = parameters["W" + str(i+1)] - learning_rate * grads["dW" + str(i+1)]
         parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
     return parameters
 
-
+def getProbsAndPreds(someX):
+    probs = softmax(np.dot(someX,w))
+    preds = np.argmax(probs,axis=1)
+    return probs,preds
+def getAccuracy(someX,someY):
+    prob,prede = getProbsAndPreds(someX)
+    accuracy = sum(prede == someY)/(float(len(someY)))
+    return accuracy
 
 
     
 
 def main() :
-    parameters = initialize_parameters([m,4,m ])
-    # print(parameters)
-    Z, cache1 = linear_forward_propagation(X_train, parameters["W1"], parameters["b1"])
-    # A = sigmoid(Z)
-    # print(A)
-    # print(forward_propagation(X_train, parameters["W1"], parameters["b1"], "sigmoid"))
-
-    AL, caches =  L_model_linear_forward(X_train, parameters)
-    #  print(AL.shape[0])
-    grads = L_model_backward_propagation(caches , AL, y_train)
-    print(grads)
-    print(AL)
+    
+    num_iterations = 5
     # print (y_train)
+    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10])
+
+     
+        
+
+        
+        
+    for i in range(num_iterations):
+        AL, caches = L_model_linear_forward(X_train, parameters)
+        print(cost_function(AL, transform_one_hot(y_train)))
+        grads = L_model_backward_propagation(caches, AL, transform_one_hot(y_train))
+        parameters = update_parameters(parameters, grads, 0.01)
+    
+    
+    
+       
+        # grads = L_model_backward_propagation(caches , AL, y_train[i:,])
+        # parameters = update_parameters(parameters, grads, 0.01)
    
     
 

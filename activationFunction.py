@@ -6,8 +6,7 @@ def sigmoid(Z):
 
 def dSigmoid(dA, cache):
     Z = cache
-    s = 1/(1+np.exp(-Z))
-    dZ = dA * s * (1-s)
+    dZ = dA * sigmoid(Z) * (1 - sigmoid(Z))
     assert (dZ.shape == Z.shape)
     return dZ
 
@@ -30,7 +29,14 @@ def softmax(Z):
         A = e / np.array([np.sum(e, axis=1)]).T  
     cache = Z 
     return A, cache
-def dSoftmax(dA, cache):
-    X, W, b = cache
-    dZ = X.dot(dA.T)
-    return dZ
+# def dSoftmax(dA, cache):
+#     Z = cache
+#     A, cache1 = softmax(Z)
+#     jacobian_m = np.zeros((Z.shape[0], Z.shape[0]))
+#     for i in range (Z.shape[0]) :
+#         for j in range (Z.shape[0]) :
+#             if i == j :
+#                jacobian_m[i][j] =A[i] * (1 - A[i])
+#             else :
+#                 jacobian_m[i][j] = -1 * A[i] * A[j]
+#     return dA * jacobian_m
