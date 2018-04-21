@@ -6,7 +6,8 @@ X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
 X_train = np.transpose(X_train) 
 y_train = np.transpose(y_train)
-
+X_test = np.transpose(X_test)
+y_test = np.transpose(y_test)
 
 def initialize_parameters(layer_dims): 
     parameters = {}
@@ -107,43 +108,37 @@ def update_parameters(parameters, grads, learning_rate):
         parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
     return parameters
 
-def getProbsAndPreds(someX):
-    probs = softmax(np.dot(someX,w))
-    preds = np.argmax(probs,axis=1)
-    return probs,preds
-def getAccuracy(someX,someY):
-    prob,prede = getProbsAndPreds(someX)
-    accuracy = sum(prede == someY)/(float(len(someY)))
-    return accuracy
 
 
     
 
-def main() :
+def loop() :
     
-    num_iterations = 5
+    num_iterations = 10
     # print (y_train)
-    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10])
-
-     
-        
-
-        
-        
+    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10]) 
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
         print(cost_function(AL, transform_one_hot(y_train)))
         grads = L_model_backward_propagation(caches, AL, transform_one_hot(y_train))
         parameters = update_parameters(parameters, grads, 0.01)
+    return parameters
     
-    
-    
-       
-        # grads = L_model_backward_propagation(caches , AL, y_train[i:,])
-        # parameters = update_parameters(parameters, grads, 0.01)
-   
+def getProbsAndPreds(X, parameters):
+    probs, cache = L_model_linear_forward(X, parameters)
+    preds = np.argmax(probs,axis=0)
+    return probs,preds
+
+def getAccuracy(X, Y, parameters):
+    prob,preds = getProbsAndPreds(X, parameters)
+    accuracy = sum(preds == Y)/(float(len(Y)))
+    return accuracy
+
+      
+      
     
 
 if (__name__ == "__main__"):
-    main()
+    parameters = loop()
+    print(getAccuracy(X_test, y_test, parameters))
    
