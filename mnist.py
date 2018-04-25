@@ -1,5 +1,6 @@
 import mnist_reader
 from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
+from convertFunction import dictionary_to_vector, vector_to_dictionary
 import numpy as np
 import scipy.sparse
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
@@ -59,6 +60,7 @@ def transform_one_hot(Y):
 
 def cost_function(AL, y) : 
    m = X_train.shape[1]
+   y = transform_one_hot(y)
    cost = -(np.sum(y * np.log(AL)) ) / m
    return cost
 
@@ -88,7 +90,7 @@ def backward_propagation(dA, cache, activation):
 def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc 
     L =len(caches)
     grads = {}
-    
+    y = transform_one_hot(y)
     dAL = np.subtract(AL,y)
     current_cache = caches[-1]
     grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  backward_propagation(dAL, current_cache, activation = "softmax")
@@ -114,15 +116,15 @@ def update_parameters(parameters, grads, learning_rate):
 
 def loop() :
     
-    num_iterations = 10
+    num_iterations = 5
     # print (y_train)
-    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10]) 
+    parameters = initialize_parameters([X_train.shape[0],256,200,128, 10]) 
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
-        print(cost_function(AL, transform_one_hot(y_train)))
-        grads = L_model_backward_propagation(caches, AL, transform_one_hot(y_train))
-        parameters = update_parameters(parameters, grads, 0.01)
-    return parameters
+        print(cost_function(AL, y_train))
+        grads = L_model_backward_propagation(caches, AL, y_train)
+        parameters = update_parameters(parameters, grads, 0.1)
+    return parameters, grads
     
 def getProbsAndPreds(X, parameters):
     probs, cache = L_model_linear_forward(X, parameters)
@@ -134,11 +136,51 @@ def getAccuracy(X, Y, parameters):
     accuracy = sum(preds == Y)/(float(len(Y)))
     return accuracy
 
-      
+
+def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
+    parameter_values = dictionary_to_vector(parameters)
+    grads = dictionary_to_vector(gradients)
+    m = parameter_values.shape[0]
+   
+    gradApproxiamte = np.zeros((m, 1))
+    J_plus  = np.zeros((m, 1))
+    J_minus = np.zeros((m, 1))
+
+    for i in range (m) : 
+        thetaPlus = np.copy(parameter_values)
+        thetaPlus[i][0] += epsilon
+        AL, caches = L_model_linear_forward(X, vector_to_dictionary(thetaPlus, parameters))
+        J_plus[i] = cost_function(AL, y)
+
+
+        thetaMinus = np.copy(parameter_values)
+        thetaMinus[i][0] -= epsilon
+        AL, caches = L_model_linear_forward(X, vector_to_dictionary(thetaMinus, parameters))
+        J_minus[i] = cost_function(AL, y)
+        print(J_minus[i])
+        gradApproxiamte[i] = (J_plus[i] - J_minus[i]) / (2 * epsilon)
+    numerator = np.linalg.norm(grad - gradapprox)                                     
+    denominator = np.linalg.norm(grad) + np.linalg.norm(gradapprox)                  
+    difference = numerator / denominator                                              
+  
+    if difference > 1e-7:
+        print("\033[93m" + "There is a mistake in the backward propagation ! difference = " + str(difference) + "\033[0m")
+    else:
+        print("\033[92m" + "Your backward propagation works perfectly fine! difference = " + str(difference) + "\033[0m")
+    
+    return difference
+
+        
+        
+         
       
     
 
 if (__name__ == "__main__"):
-    parameters = loop()
-    print(getAccuracy(X_test, y_test, parameters))
+    parameter1s, grads = loop()
+    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10]) 
+    difference =  gradient_checking(parameters, grads, X_train, y_train)
+    print(difference)
+   
+  
    

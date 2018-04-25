@@ -17,18 +17,13 @@ def ReLU(Z):
     return A, cache
 def dReLU(dA, cache): 
     Z = cache
-    dZ = np.array(dA, copy=True) 
-    dZ[Z <= 0] = 0
-    assert (dZ.shape == Z.shape)
-    return dZ
+    Z[Z<=0] = 0
+    Z[Z>0] = 1
+    return dA * Z
 def softmax(Z):       
-    e = np.exp(Z - np.max(Z))  
-    if e.ndim == 1:
-        A =  e / np.sum(e, axis=0)
-    else:  
-        A = e / np.array([np.sum(e, axis=1)]).T  
-    cache = Z 
-    return A, cache
+    e_Z = np.exp(Z - np.max(Z, axis = 0, keepdims = True))
+    A = e_Z / e_Z.sum(axis = 0)
+    return A, Z
 # def dSoftmax(dA, cache):
 #     Z = cache
 #     A, cache1 = softmax(Z)
