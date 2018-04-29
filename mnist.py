@@ -119,7 +119,7 @@ def loop() :
     
     num_iterations = 2000
     # print (y_train)
-    parameters = initialize_parameters([X_train.shape[0],256, 128,256, 10]) 
+    parameters = initialize_parameters([X_train.shape[0],256, 128,128, 64, 10]) 
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
         print(cost_function(AL, y_train))
