@@ -24,14 +24,9 @@ def softmax(Z):
     e_Z = np.exp(Z - np.max(Z, axis = 0, keepdims = True))
     A = e_Z / e_Z.sum(axis = 0)
     return A, Z
-# def dSoftmax(dA, cache):
-#     Z = cache
-#     A, cache1 = softmax(Z)
-#     jacobian_m = np.zeros((Z.shape[0], Z.shape[0]))
-#     for i in range (Z.shape[0]) :
-#         for j in range (Z.shape[0]) :
-#             if i == j :
-#                jacobian_m[i][j] =A[i] * (1 - A[i])
-#             else :
-#                 jacobian_m[i][j] = -1 * A[i] * A[j]
-#     return dA * jacobian_m
+def dSoftmax(dA, cache):
+    z = cache
+    s , z = softmax(z)
+    dZ = dA * s * (1 - s)
+    return dZ
+

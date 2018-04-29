@@ -1,14 +1,14 @@
 import mnist_reader
-from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
-from convertFunction import dictionary_to_vector, vector_to_dictionary
+from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax, dSoftmax
+from convertFunction import dictionary_to_vector, vector_to_dictionary, gradients_to_vector
 import numpy as np
 import scipy.sparse
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
-X_train = np.transpose(X_train) 
-y_train = np.transpose(y_train)
-X_test = np.transpose(X_test)
-y_test = np.transpose(y_test)
+X_train = np.transpose(X_train[:100])
+y_train = np.transpose(y_train[:100])
+X_test = np.transpose(X_test[:100])
+y_test = np.transpose(y_test[:100])
 
 def initialize_parameters(layer_dims): 
     parameters = {}
@@ -40,7 +40,7 @@ def forward_propagation(A_prev, W,b, activation):
 
 def L_model_linear_forward(X, parameters):
     A = X
-    L = len(parameters) / 2
+    L = len(parameters) // 2
     caches = []
     for i in range(1, L):
         A_prev = A 
@@ -55,8 +55,8 @@ def L_model_linear_forward(X, parameters):
 def transform_one_hot(Y):
     m = Y.shape[0]
     OHX = scipy.sparse.csr_matrix((np.ones(m), (Y, np.array(range(m)))))
-    OHX = np.array(OHX.todense()).T
-    return np.transpose(OHX)
+    OHX = np.array(OHX.todense())
+    return OHX
 
 def cost_function(AL, y) : 
    m = X_train.shape[1]
@@ -82,7 +82,7 @@ def backward_propagation(dA, cache, activation):
         dZ = dSigmoid(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
     if activation == "softmax":
-        dZ = dA
+        dZ = dSoftmax(dA, activation_cache)
         dA_prev, dW, db = linear_backward(dZ, linear_cache)
     return dA_prev, dW, db
 
@@ -93,6 +93,7 @@ def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc
     y = transform_one_hot(y)
     dAL = np.subtract(AL,y)
     current_cache = caches[-1]
+
     grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  backward_propagation(dAL, current_cache, activation = "softmax")
     for l in reversed(range(L-1)):
         current_cache = caches[l]
@@ -104,7 +105,7 @@ def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc
 
 
 def update_parameters(parameters, grads, learning_rate):
-    L = len(parameters) / 2
+    L = len(parameters) // 2
     for i in range(L):
         parameters["W" + str(i+1)] = parameters["W" + str(i+1)] - learning_rate * grads["dW" + str(i+1)]
         parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
@@ -116,14 +117,14 @@ def update_parameters(parameters, grads, learning_rate):
 
 def loop() :
     
-    num_iterations = 5
+    num_iterations = 2000
     # print (y_train)
-    parameters = initialize_parameters([X_train.shape[0],256,200,128, 10]) 
+    parameters = initialize_parameters([X_train.shape[0],256, 128,256, 10]) 
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
         print(cost_function(AL, y_train))
         grads = L_model_backward_propagation(caches, AL, y_train)
-        parameters = update_parameters(parameters, grads, 0.1)
+        parameters = update_parameters(parameters, grads, 0.01)
     return parameters, grads
     
 def getProbsAndPreds(X, parameters):
@@ -139,13 +140,13 @@ def getAccuracy(X, Y, parameters):
 
 def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
     parameter_values = dictionary_to_vector(parameters)
-    grads = dictionary_to_vector(gradients)
+    grads = gradients_to_vector(parameters,gradients)
     m = parameter_values.shape[0]
-   
+    n = grads.shape[0]
     gradApproxiamte = np.zeros((m, 1))
     J_plus  = np.zeros((m, 1))
     J_minus = np.zeros((m, 1))
-
+    
     for i in range (m) : 
         thetaPlus = np.copy(parameter_values)
         thetaPlus[i][0] += epsilon
@@ -157,10 +158,10 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
         thetaMinus[i][0] -= epsilon
         AL, caches = L_model_linear_forward(X, vector_to_dictionary(thetaMinus, parameters))
         J_minus[i] = cost_function(AL, y)
-        print(J_minus[i])
+        
         gradApproxiamte[i] = (J_plus[i] - J_minus[i]) / (2 * epsilon)
-    numerator = np.linalg.norm(grad - gradapprox)                                     
-    denominator = np.linalg.norm(grad) + np.linalg.norm(gradapprox)                  
+    numerator = np.linalg.norm(grads - gradApproxiamte)                                     
+    denominator = np.linalg.norm(grads) + np.linalg.norm(gradApproxiamte)                  
     difference = numerator / denominator                                              
   
     if difference > 1e-7:
@@ -169,7 +170,8 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
         print("\033[92m" + "Your backward propagation works perfectly fine! difference = " + str(difference) + "\033[0m")
     
     return difference
-
+    
+    
         
         
          
@@ -178,9 +180,17 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
 
 if (__name__ == "__main__"):
     parameter1s, grads = loop()
-    parameters = initialize_parameters([X_train.shape[0],4,5,6, 10]) 
-    difference =  gradient_checking(parameters, grads, X_train, y_train)
-    print(difference)
+    train_accuracy = getAccuracy(X_train, y_train, parameter1s)
+    print("Train_accuracy: " + str(train_accuracy))
+    test_accuracy = getAccuracy(X_test, y_test, parameter1s)
+    print("test_accuracy: " + str(test_accuracy))
+
+
+    
+    
+    
+   
+    
    
   
    
