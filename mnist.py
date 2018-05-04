@@ -3,12 +3,13 @@ from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax, dSoftmax
 from convertFunction import dictionary_to_vector, vector_to_dictionary, gradients_to_vector
 import numpy as np
 import scipy.sparse
+import matplotlib.pyplot as plt
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
-X_train = np.transpose(X_train[:100])
-y_train = np.transpose(y_train[:100])
-X_test = np.transpose(X_test[:100])
-y_test = np.transpose(y_test[:100])
+X_train = np.transpose(X_train[:5000])
+y_train = np.transpose(y_train[:5000])
+X_test = np.transpose(X_test[:1000])
+y_test = np.transpose(y_test[:1000])
 
 def initialize_parameters(layer_dims): 
     parameters = {}
@@ -119,13 +120,16 @@ def loop() :
     
     num_iterations = 2000
     # print (y_train)
-    parameters = initialize_parameters([X_train.shape[0],256, 128, 10]) 
+    cost = []
+    parameters = initialize_parameters([X_train.shape[0],256, 150 , 10]) 
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
-        print(cost_function(AL, y_train))
+        cost.append(cost_function(AL, y_train))
+        if  i % 100 == 0:
+            print(cost_function(AL, y_train))
         grads = L_model_backward_propagation(caches, AL, y_train)
-        parameters = update_parameters(parameters, grads, 0.01)
-    return parameters, grads
+        parameters = update_parameters(parameters, grads, 0.09)
+    return parameters, grads, cost
     
 def getProbsAndPreds(X, parameters):
     probs, cache = L_model_linear_forward(X, parameters)
@@ -163,7 +167,6 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
     numerator = np.linalg.norm(grads - gradApproxiamte)                                     
     denominator = np.linalg.norm(grads) + np.linalg.norm(gradApproxiamte)                  
     difference = numerator / denominator                                              
-  
     if difference > 1e-7:
         print("\033[93m" + "There is a mistake in the backward propagation ! difference = " + str(difference) + "\033[0m")
     else:
@@ -179,11 +182,19 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
     
 
 if (__name__ == "__main__"):
-    parameter1s, grads = loop()
+    
+    parameter1s, grads, cost = loop()
+    
     train_accuracy = getAccuracy(X_train, y_train, parameter1s)
     print("Train_accuracy: " + str(train_accuracy))
     test_accuracy = getAccuracy(X_test, y_test, parameter1s)
     print("test_accuracy: " + str(test_accuracy))
+    
+    plt.plot(cost)
+    plt.ylabel('cost')
+    plt.xlabel('iterations (per hundreds)')
+    plt.title("Learning rate = 0.01")
+    plt.show()
 
 
     
