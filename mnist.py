@@ -1,8 +1,9 @@
 import mnist_reader
-from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax, dSoftmax
+from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
 from convertFunction import dictionary_to_vector, vector_to_dictionary, gradients_to_vector
 import numpy as np
-import scipy.sparse
+
+from scipy import sparse 
 import matplotlib.pyplot as plt
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
@@ -11,12 +12,16 @@ y_train = np.transpose(y_train[:5000])
 X_test = np.transpose(X_test[:1000])
 y_test = np.transpose(y_test[:1000])
 
+x_norm_train = np.linalg.norm(X_train, axis=0)
+x_norm_test = np.linalg.norm(X_test, axis=0)
+X_train = X_train/x_norm_train
+X_test = X_test/x_norm_test
 def initialize_parameters(layer_dims): 
     parameters = {}
     L = len(layer_dims)
     for i in range(1, L):
-        parameters['W' + str(i)] = np.random.randn(layer_dims[i], layer_dims[i-1]) * 0.01
-        parameters['b' + str(i)] = np.zeros(shape = (layer_dims[i],1))
+        parameters['W' + str(i)] = np.random.randn(layer_dims[i], layer_dims[i-1])*0.01
+        parameters['b' + str(i)] = np.zeros(shape = (layer_dims[i],1))*0.01
     return parameters
 
 def linear_forward_propagation(A, W, b):
@@ -53,57 +58,39 @@ def L_model_linear_forward(X, parameters):
    
     return AL, caches
 
-def transform_one_hot(Y):
-    m = Y.shape[0]
-    OHX = scipy.sparse.csr_matrix((np.ones(m), (Y, np.array(range(m)))))
-    OHX = np.array(OHX.todense())
-    return OHX
+def transform_one_hot(y, num_labels):
+   Y = sparse.coo_matrix((np.ones_like(y), 
+        (y, np.arange(len(y)))), shape = (num_labels, len(y))).toarray()
+   return Y 
 
-def cost_function(AL, y) : 
+def cost_function(AL, y): 
    m = X_train.shape[1]
-   y = transform_one_hot(y)
-   cost = -(np.sum(y * np.log(AL)) ) / m
+   Y = transform_one_hot(y, 10)
+   cost = -1. / m *(np.sum(np.multiply(np.log(AL), Y)))
    return cost
 
 def linear_backward(dZ, cache):
     A_prev, W, b = cache
     m = A_prev.shape[1]
-    dW = np.dot(dZ, A_prev.T) / m
+    dW = np.dot(dZ, np.transpose(A_prev)) / m
     db = np.sum(dZ, axis=1, keepdims=True) / m
-    dA_prev = np.dot(W.T, dZ)
+    dA_prev = np.dot(np.transpose(W), dZ)
     return dA_prev, dW, db
 
-
-def backward_propagation(dA, cache, activation):
-    linear_cache , activation_cache = cache
-    if activation == "ReLU" :
-        dZ = dReLU(dA, activation_cache)
-        dA_prev, dW, db = linear_backward(dZ, linear_cache)
-    if activation == "sigmoid" :
-        dZ = dSigmoid(dA, activation_cache)
-        dA_prev, dW, db = linear_backward(dZ, linear_cache)
-    if activation == "softmax":
-        dZ = dSoftmax(dA, activation_cache)
-        dA_prev, dW, db = linear_backward(dZ, linear_cache)
-    return dA_prev, dW, db
-
-
-def L_model_backward_propagation(caches, AL, y): # tao ra dAL truoc 
+def L_model_backward_propagation(caches, AL, y):
     L =len(caches)
     grads = {}
-    y = transform_one_hot(y)
-    dAL = np.subtract(AL,y)
-    current_cache = caches[-1]
-
-    grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] =  backward_propagation(dAL, current_cache, activation = "softmax")
-    for l in reversed(range(L-1)):
-        current_cache = caches[l]
-        dA_prev_temp, dW_temp, db_temp =  backward_propagation(grads["dA" + str(l + 2)], current_cache, activation = "ReLU")
-        grads["dA" + str(l + 1)] = dA_prev_temp
-        grads["dW" + str(l + 1)] = dW_temp
-        grads["db" + str(l + 1)] = db_temp
+    Y = transform_one_hot(y, 10)
+    dZL = AL - Y
+    linear_cache, activation_cache = caches[L-1]
+    grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZL, linear_cache)
+    L-=1
+    while (L > 0):
+        linear_cache, activation_cache = caches[L-1]
+        dZ = dReLU(grads['dA' + str(L)] , activation_cache)
+        grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZ, linear_cache)
+        L-=1
     return grads
-
 
 def update_parameters(parameters, grads, learning_rate):
     L = len(parameters) // 2
@@ -112,23 +99,19 @@ def update_parameters(parameters, grads, learning_rate):
         parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
     return parameters
 
-
-
-    
-
 def loop() :
-    
     num_iterations = 2000
-    # print (y_train)
     cost = []
-    parameters = initialize_parameters([X_train.shape[0],256, 150 , 10]) 
+    parameters = initialize_parameters([X_train.shape[0], 300, 10])
+    
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
         cost.append(cost_function(AL, y_train))
-        if  i % 100 == 0:
+        if i % 100 == 0:
             print(cost_function(AL, y_train))
+        # print(AL)
         grads = L_model_backward_propagation(caches, AL, y_train)
-        parameters = update_parameters(parameters, grads, 0.09)
+        parameters = update_parameters(parameters, grads, 0.2)
     return parameters, grads, cost
     
 def getProbsAndPreds(X, parameters):
@@ -182,9 +165,12 @@ def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
     
 
 if (__name__ == "__main__"):
+    # parameters = initialize_parameters([X_train.shape[0],256, 128, 10]) 
+    # AL, caches = L_model_linear_forward(X_train, parameters)
     
+    # m,n = softmax(AL)
+    # print (m, AL.shape)
     parameter1s, grads, cost = loop()
-    
     train_accuracy = getAccuracy(X_train, y_train, parameter1s)
     print("Train_accuracy: " + str(train_accuracy))
     test_accuracy = getAccuracy(X_test, y_test, parameter1s)
@@ -196,6 +182,8 @@ if (__name__ == "__main__"):
     plt.title("Learning rate = 0.01")
     plt.show()
 
+    
+
 
     
     
@@ -203,4 +191,3 @@ if (__name__ == "__main__"):
     
    
   
-   

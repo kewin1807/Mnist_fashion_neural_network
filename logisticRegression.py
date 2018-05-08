@@ -53,6 +53,7 @@ def loop():
             print(cost)
         parameters = update_params(parameters, grads, 0.3)
     return parameters, grads, costs
+    
 def getProbsAndPreds(X, parameters):
     probs = sigmoid(np.dot(X, np.transpose(parameters)))
     preds = np.argmax(probs,axis=1)

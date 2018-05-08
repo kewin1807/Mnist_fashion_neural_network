@@ -6,7 +6,8 @@ def sigmoid(Z):
 
 def dSigmoid(dA, cache):
     Z = cache
-    dZ = dA * sigmoid(Z) * (1 - sigmoid(Z))
+    s = 1/(1+np.exp(-Z))
+    dZ = dA * s * (1-s)
     assert (dZ.shape == Z.shape)
     return dZ
 
@@ -17,16 +18,13 @@ def ReLU(Z):
     return A, cache
 def dReLU(dA, cache): 
     Z = cache
-    Z[Z<=0] = 0
-    Z[Z>0] = 1
-    return dA * Z
+    dZ = np.array(dA, copy=True) 
+    dZ[Z <= 0] = 0
+    assert (dZ.shape == Z.shape)
+    return dZ
+
 def softmax(Z):       
-    e_Z = np.exp(Z - np.max(Z, axis = 0, keepdims = True))
+    e_Z = np.exp(Z - np.max(Z,  axis=0))
     A = e_Z / e_Z.sum(axis = 0)
     return A, Z
-def dSoftmax(dA, cache):
-    z = cache
-    s , z = softmax(z)
-    dZ = dA * s * (1 - s)
-    return dZ
 
