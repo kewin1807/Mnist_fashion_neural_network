@@ -18,8 +18,8 @@ y_test = np.transpose(y_test[:500])
 # X_test = X_test/x_norm_test
 
 #normalization data 
-X_train = (X_train - np.mean(X_train)) / (np.amax(X_train) - np.amin(X_train))
-X_test = (X_test - np.mean(X_test)) / (np.amax(X_test) - np.amin(X_test))
+X_train = (X_train - np.mean(X_train)) / np.std(X_train)
+X_test = (X_test - np.mean(X_test)) / np.std(X_test)
 
 def initialize_parameters(layer_dims): 
     parameters = {}
@@ -67,32 +67,36 @@ def transform_one_hot(y, num_labels):
         (y, np.arange(len(y)))), shape = (num_labels, len(y))).toarray()
    return Y 
 
-def cost_function(AL, y): 
+def cost_function(AL, y, lamda, parameters): 
    m = X_train.shape[1]
+   L = len(parameters) // 2
+   k = 0
+   for i in range(L):
+       k += np.sum(parameters["W" + str(i+1)] ** 2)
    Y = transform_one_hot(y, 10)
-   cost = -1. / m *(np.sum(np.multiply(np.log(AL), Y)))
+   cost = -1. / m *(np.sum(np.multiply(np.log(AL), Y))) + lamda / (2 * m) * k
    return cost
 
-def linear_backward(dZ, cache):
+def linear_backward(dZ, cache, lamda):
     A_prev, W, b = cache
     m = A_prev.shape[1]
-    dW = np.dot(dZ, A_prev.T) / m
+    dW = np.dot(dZ, A_prev.T) / m + lamda / m * W
     db = np.sum(dZ, axis=1, keepdims=True) / m
     dA_prev = np.dot(W.T, dZ)
     return dA_prev, dW, db
 
-def L_model_backward_propagation(caches, AL, y):
+def L_model_backward_propagation(caches, AL, y, lamda):
     L =len(caches)
     grads = {}
     Y = transform_one_hot(y, 10)
     dZL = AL - Y
     linear_cache, activation_cache = caches[L-1]
-    grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZL, linear_cache)
+    grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZL, linear_cache, lamda)
     L-=1
     while (L > 0):
         linear_cache, activation_cache = caches[L-1]
         dZ = dReLU(grads['dA' + str(L)] , activation_cache)
-        grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZ, linear_cache)
+        grads['dA' + str(L-1)], grads['dW' + str(L)], grads['db' + str(L)] = linear_backward(dZ, linear_cache, lamda)
         L-=1
     return grads
 
@@ -103,19 +107,19 @@ def update_parameters(parameters, grads, learning_rate):
         parameters["b" + str(i+1)] = parameters["b" + str(i+1)] - learning_rate * grads["db" + str(i+1)]
     return parameters
 
-def loop() :
-    num_iterations = 2000
+def loop(lamda) :
+    num_iterations = 3000
     cost = []
-    parameters = initialize_parameters([X_train.shape[0],49,10])
+    parameters = initialize_parameters([X_train.shape[0],128,10])
     
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
-        cost.append(cost_function(AL, y_train))
+        cost.append(cost_function(AL, y_train, lamda, parameters))
         if i % 100 == 0:
-            print(cost_function(AL, y_train))
+            print(cost_function(AL, y_train, lamda, parameters))
         # print(AL)
-        grads = L_model_backward_propagation(caches, AL, y_train)
-        parameters = update_parameters(parameters, grads, 0.3)
+        grads = L_model_backward_propagation(caches, AL, y_train, lamda)
+        parameters = update_parameters(parameters, grads, 0.25)
     return parameters, grads, cost
     
 def getProbsAndPreds(X, parameters):
@@ -174,7 +178,7 @@ if (__name__ == "__main__"):
     
     # m,n = softmax(AL)
     # print (m, AL.shape)
-    parameter1s, grads, cost = loop()
+    parameter1s, grads, cost = loop(0.001)
     train_accuracy = getAccuracy(X_train, y_train, parameter1s)
     print("Train_accuracy: " + str(train_accuracy))
     test_accuracy = getAccuracy(X_test, y_test, parameter1s)
