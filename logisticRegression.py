@@ -8,6 +8,9 @@ X_train = X_train[:5000]/255
 y_train = y_train[:5000].reshape(5000, 1)
 X_test = X_test[:1000]/255
 y_test = y_test[:1000].reshape(1000, 1)
+X_train = (X_train - np.mean(X_train)) / (np.amax(X_train) - np.amin(X_train))
+X_test = (X_test - np.mean(X_test)) / (np.amax(X_test) - np.amin(X_test))
+
 
 X_train = np.insert(X_train, 0, 1, axis=1)
 X_test = np.insert(X_test, 0, 1, axis=1)

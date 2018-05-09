@@ -9,13 +9,18 @@ X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
 X_train = np.transpose(X_train[:5000])
 y_train = np.transpose(y_train[:5000])
-X_test = np.transpose(X_test[:1000])
-y_test = np.transpose(y_test[:1000])
+X_test = np.transpose(X_test[:500])
+y_test = np.transpose(y_test[:500])
 
-x_norm_train = np.linalg.norm(X_train, axis=0)
-x_norm_test = np.linalg.norm(X_test, axis=0)
-X_train = X_train/x_norm_train
-X_test = X_test/x_norm_test
+# x_norm_train = np.linalg.norm(X_train, axis=0)
+# x_norm_test = np.linalg.norm(X_test, axis=0)
+# X_train = X_train/x_norm_train
+# X_test = X_test/x_norm_test
+
+#normalization data 
+X_train = (X_train - np.mean(X_train)) / (np.amax(X_train) - np.amin(X_train))
+X_test = (X_test - np.mean(X_test)) / (np.amax(X_test) - np.amin(X_test))
+
 def initialize_parameters(layer_dims): 
     parameters = {}
     L = len(layer_dims)
@@ -27,7 +32,6 @@ def initialize_parameters(layer_dims):
 def linear_forward_propagation(A, W, b):
     Z = np.dot(W, A) + b
     cache = (A, W, b)
-   
     return Z, cache
 
 
@@ -72,9 +76,9 @@ def cost_function(AL, y):
 def linear_backward(dZ, cache):
     A_prev, W, b = cache
     m = A_prev.shape[1]
-    dW = np.dot(dZ, np.transpose(A_prev)) / m
+    dW = np.dot(dZ, A_prev.T) / m
     db = np.sum(dZ, axis=1, keepdims=True) / m
-    dA_prev = np.dot(np.transpose(W), dZ)
+    dA_prev = np.dot(W.T, dZ)
     return dA_prev, dW, db
 
 def L_model_backward_propagation(caches, AL, y):
@@ -102,7 +106,7 @@ def update_parameters(parameters, grads, learning_rate):
 def loop() :
     num_iterations = 2000
     cost = []
-    parameters = initialize_parameters([X_train.shape[0], 300, 10])
+    parameters = initialize_parameters([X_train.shape[0],49,10])
     
     for i in range(num_iterations):
         AL, caches = L_model_linear_forward(X_train, parameters)
@@ -111,7 +115,7 @@ def loop() :
             print(cost_function(AL, y_train))
         # print(AL)
         grads = L_model_backward_propagation(caches, AL, y_train)
-        parameters = update_parameters(parameters, grads, 0.2)
+        parameters = update_parameters(parameters, grads, 0.3)
     return parameters, grads, cost
     
 def getProbsAndPreds(X, parameters):
@@ -175,7 +179,6 @@ if (__name__ == "__main__"):
     print("Train_accuracy: " + str(train_accuracy))
     test_accuracy = getAccuracy(X_test, y_test, parameter1s)
     print("test_accuracy: " + str(test_accuracy))
-    
     plt.plot(cost)
     plt.ylabel('cost')
     plt.xlabel('iterations (per hundreds)')
