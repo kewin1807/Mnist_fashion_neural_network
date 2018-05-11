@@ -1,14 +1,14 @@
 import mnist_reader
 from activationFunction import sigmoid, dSigmoid, ReLU, dReLU, softmax
 from convertFunction import dictionary_to_vector, vector_to_dictionary, gradients_to_vector
+from optimize import random_minibatch, initial_velocity, update_parameter_momentum, initial_Adam, update_parameters_with_adam
 import numpy as np
-
-from scipy import sparse 
+from scipy import sparse
 import matplotlib.pyplot as plt
 X_train, y_train = mnist_reader.load_mnist('data/fashion', kind='train')
 X_test, y_test = mnist_reader.load_mnist('data/fashion', kind='t10k')
-X_train = np.transpose(X_train[:5000])
-y_train = np.transpose(y_train[:5000])
+X_train = np.transpose(X_train[:60000])
+y_train = np.transpose(y_train[:60000])
 X_test = np.transpose(X_test[:500])
 y_test = np.transpose(y_test[:500])
 
@@ -66,14 +66,14 @@ def transform_one_hot(y, num_labels):
    Y = sparse.coo_matrix((np.ones_like(y), 
         (y, np.arange(len(y)))), shape = (num_labels, len(y))).toarray()
    return Y 
-
 def cost_function(AL, y, lamda, parameters): 
-   m = X_train.shape[1]
+  
    L = len(parameters) // 2
    k = 0
    for i in range(L):
        k += np.sum(parameters["W" + str(i+1)] ** 2)
    Y = transform_one_hot(y, 10)
+   m = Y.shape[1]
    cost = -1. / m *(np.sum(np.multiply(np.log(AL), Y))) + lamda / (2 * m) * k
    return cost
 
@@ -108,19 +108,36 @@ def update_parameters(parameters, grads, learning_rate):
     return parameters
 
 def loop(lamda) :
-    num_iterations = 3000
-    cost = []
+    num_iterations = 100
+    costs = []
+    t = 0
     parameters = initialize_parameters([X_train.shape[0],128,10])
-    
+    # V = initial_velocity(parameters)
+    V, S = initial_Adam(parameters)
     for i in range(num_iterations):
-        AL, caches = L_model_linear_forward(X_train, parameters)
-        cost.append(cost_function(AL, y_train, lamda, parameters))
-        if i % 100 == 0:
-            print(cost_function(AL, y_train, lamda, parameters))
-        # print(AL)
-        grads = L_model_backward_propagation(caches, AL, y_train, lamda)
-        parameters = update_parameters(parameters, grads, 0.25)
-    return parameters, grads, cost
+        # batch-gradient
+
+        # AL, caches = L_model_linear_forward(X_train, parameters)
+        # cost.append(cost_function(AL, y_train, lamda, parameters))
+        # if i % 100 == 0:
+        #     print(cost_function(AL, y_train, lamda, parameters))
+        # # print(AL)
+        # grads = L_model_backward_propagation(caches, AL, y_train, lamda)
+        # parameters = update_parameters(parameters, grads, 0.25)
+
+        mini_batches =  random_minibatch(X_train, y_train)
+        for mini_batch in mini_batches:
+            minibatch_X, minibatch_Y = mini_batch
+            AL, caches = L_model_linear_forward(minibatch_X, parameters)
+            cost = cost_function(AL, minibatch_Y.flatten(), lamda, parameters)
+            grads = L_model_backward_propagation(caches, AL, minibatch_Y.flatten(), lamda)
+            t = t+1
+            parameters , V ,S= update_parameters_with_adam(parameters, grads, V,S,t, 0.0001)
+        
+        costs.append(cost)
+        if i % 10 == 0:
+            print ("Cost after iteration  %i: %f" %(i, cost))
+    return parameters, grads, costs
     
 def getProbsAndPreds(X, parameters):
     probs, cache = L_model_linear_forward(X, parameters)
@@ -131,54 +148,14 @@ def getAccuracy(X, Y, parameters):
     prob,preds = getProbsAndPreds(X, parameters)
     accuracy = sum(preds == Y)/(float(len(Y)))
     return accuracy
-
-
-def gradient_checking(parameters, gradients, X, y ,epsilon = 1e-7 ) :
-    parameter_values = dictionary_to_vector(parameters)
-    grads = gradients_to_vector(parameters,gradients)
-    m = parameter_values.shape[0]
-    n = grads.shape[0]
-    gradApproxiamte = np.zeros((m, 1))
-    J_plus  = np.zeros((m, 1))
-    J_minus = np.zeros((m, 1))
-    
-    for i in range (m) : 
-        thetaPlus = np.copy(parameter_values)
-        thetaPlus[i][0] += epsilon
-        AL, caches = L_model_linear_forward(X, vector_to_dictionary(thetaPlus, parameters))
-        J_plus[i] = cost_function(AL, y)
-
-
-        thetaMinus = np.copy(parameter_values)
-        thetaMinus[i][0] -= epsilon
-        AL, caches = L_model_linear_forward(X, vector_to_dictionary(thetaMinus, parameters))
-        J_minus[i] = cost_function(AL, y)
-        
-        gradApproxiamte[i] = (J_plus[i] - J_minus[i]) / (2 * epsilon)
-    numerator = np.linalg.norm(grads - gradApproxiamte)                                     
-    denominator = np.linalg.norm(grads) + np.linalg.norm(gradApproxiamte)                  
-    difference = numerator / denominator                                              
-    if difference > 1e-7:
-        print("\033[93m" + "There is a mistake in the backward propagation ! difference = " + str(difference) + "\033[0m")
-    else:
-        print("\033[92m" + "Your backward propagation works perfectly fine! difference = " + str(difference) + "\033[0m")
-    
-    return difference
-    
-    
-        
-        
-         
-      
-    
-
 if (__name__ == "__main__"):
-    # parameters = initialize_parameters([X_train.shape[0],256, 128, 10]) 
-    # AL, caches = L_model_linear_forward(X_train, parameters)
+    # mini_batches = random_minibatch(X_train, y_train)
+    # X, y = mini_batches[0]
+    # print(y.shape, y_train.shape)
     
-    # m,n = softmax(AL)
-    # print (m, AL.shape)
-    parameter1s, grads, cost = loop(0.001)
+    # print(transform_one_hot(y.flatten())[:,1])
+    
+    parameter1s, grads, cost = loop(0.0001)
     train_accuracy = getAccuracy(X_train, y_train, parameter1s)
     print("Train_accuracy: " + str(train_accuracy))
     test_accuracy = getAccuracy(X_test, y_test, parameter1s)
